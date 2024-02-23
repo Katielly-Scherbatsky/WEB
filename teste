@@ -1,0 +1,2990 @@
+<template>
+  <pagina
+    :formulario.sync="modal"
+    :loading="loading"
+    :editar="!!(controle.exibir && !controle.inserir)"
+    :salvar="!!(!controle.exibir && (controle.inserir || controle.editar))"
+    :mais-opcoes="!controle.inserir"
+    subtitulo="Controle de produtividade desossa"
+    :campo-obrigatorio-title="false"
+    titulo-toolbar="Informações do documento"
+    titulo="Produtividade Desossa"
+    fechar
+    @cancelar="resetFormulario()"
+    @editar="(controle.exibir = false), (controle.editar = true)"
+    @fechar="resetFormulario()"
+    @salvar="salvarRegistro()"
+  >
+    <aviso
+      v-model="aviso.modal"
+      :options="aviso"
+      @sim="aviso = { modal: false, key: null, text: '' }"
+      @excluir="
+        (aviso = { modal: false, key: null, text: '' }), excluirRegistro()
+      "
+      @finalizarDia="
+        (aviso = { modal: false, key: null, text: '' }), finalizarDiaFunc()
+      "
+      @finalizarDiaMassa="
+        (aviso = { modal: false, key: null, text: '' }), finalizarDiaFuncMassa()
+      "
+      @voltarPendente="
+        (aviso = { modal: false, key: null, text: '' }), voltarPendenteFunc()
+      "
+      @excluirRelacionamento="
+        (aviso = { modal: false, key: null, text: '' }), excluirRelacionamento()
+      "
+    />
+    <modal
+      v-model="modalRelacionamentos"
+      :options="optionsModalRelacionamentos"
+      @input="modalRelacionamentos = false"
+    >
+      <div align="center" class="mt-4 mb-4">
+        <v-btn
+          class="mr-2"
+          outlined
+          color="primary"
+          @click="abrirModalIndividual()"
+        >
+          <v-icon left>mdi-account-outline</v-icon>
+          Individual
+        </v-btn>
+        <v-btn
+          class="mr-2"
+          outlined
+          color="primary"
+          @click="
+            (formularioRelacionamentoMassa.esteira = selecionados[0].esteira),
+              (modalRelacionamentoMassa = true)
+          "
+        >
+          <v-icon left>mdi-account-group-outline</v-icon>
+          Agrupado
+        </v-btn>
+      </div>
+    </modal>
+    <modal
+      v-model="modalRelacionamentoMassa"
+      :options="optionsModalMassa"
+      @input="modalRelacionamentoMassa = false"
+      @salvar="inserirRelacionamentoMassa()"
+    >
+      <v-form @submit.prevent="&quot;&quot;;">
+        <validation-observer ref="observerRelacionamentoMassa">
+          <v-container fluid grid-list-xs>
+            <v-row dense>
+              <v-col cols="12" xl="6" lg="6" md="6" xs="12">
+                <validation-provider
+                  v-slot="{ errors }"
+                  name="Produto"
+                  rules="required"
+                  vid="produtoDesossaItemId"
+                >
+                  <v-autocomplete
+                    v-model="formularioRelacionamentoMassa.produtoDesossaItemId"
+                    :items="produtosDesossaItensDropdown"
+                    :disabled="controleModal.exibir"
+                    :error-messages="errors"
+                    :hide-details="!errors.length"
+                    dense
+                    class="required"
+                    item-value="id"
+                    item-text="descricao"
+                    label="Produto"
+                    outlined
+                  />
+                </validation-provider>
+              </v-col>
+              <v-col cols="12" xl="3" lg="3" md="3" xs="12">
+                <validation-provider
+                  v-slot="{ errors }"
+                  name="Quantidade Peças"
+                  rules="required"
+                  vid="quantidade"
+                >
+                  <v-text-field
+                    v-model="formularioRelacionamentoMassa.quantidade"
+                    v-mask="'##########'"
+                    :disabled="controleModal.exibir"
+                    :error-messages="errors"
+                    :hide-details="!errors.length"
+                    class="required"
+                    type="number"
+                    dense
+                    label="Quantidade Peças"
+                    outlined
+                  />
+                </validation-provider>
+              </v-col>
+              <v-col cols="12" xl="3" lg="3" md="3" xs="12">
+                <validation-provider
+                  v-slot="{ errors }"
+                  name="Esteira"
+                  rules="required"
+                  vid="esteira"
+                >
+                  <v-text-field
+                    v-model="formularioRelacionamentoMassa.esteira"
+                    v-mask="'##########'"
+                    :disabled="controleModal.exibir"
+                    :error-messages="errors"
+                    :hide-details="!errors.length"
+                    class="required"
+                    type="number"
+                    dense
+                    label="Esteira"
+                    outlined
+                    @keypress.enter="inserirRelacionamento()"
+                  />
+                </validation-provider>
+              </v-col>
+              <v-col cols="12" xl="3" lg="3" md="3" xs="12">
+                <validation-provider
+                  v-slot="{ errors }"
+                  name="Horas"
+                  rules="required"
+                  vid="horas"
+                >
+                  <v-text-field
+                    v-model="formularioRelacionamentoMassa.horas"
+                    v-moeda="{ negativo: false, decimal: 2 }"
+                    :error-messages="errors"
+                    :hide-details="!errors.length"
+                    :disabled="controleModal.exibir"
+                    dense
+                    label="Horas Trabalhadas"
+                    outlined
+                  />
+                  <small>
+                    {{ formularioRelacionamentoMassaHoraTrabalhada }}
+                  </small>
+                </validation-provider>
+              </v-col>
+            </v-row>
+          </v-container>
+        </validation-observer>
+      </v-form>
+    </modal>
+    <modal
+      v-model="modalRelacionamentoIndividual"
+      :options="optionsModalIndividual"
+      @input="resetModalIndividual()"
+      @salvar="inserirRelacionamentoIndividual()"
+    >
+      <v-simple-table
+        v-if="selecionados.length > 12"
+        fixed-header
+        height="500px"
+        dense
+        class="mt-4 ml-3 mr-3"
+      >
+        <template v-slot:default>
+          <thead>
+            <tr>
+              <th class="text-center">Esteira</th>
+              <th class="text-center">Nome</th>
+              <th class="text-center">Código</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="(item, index) in selecionados"
+              :key="index"
+              :class="
+                selecionarLinha
+                  ? {
+                      linhaSelecionada: index === item.index,
+                      linhaDesativada: index !== item.index,
+                    }
+                  : {
+                      linhaSelecionada: index === 0,
+                      linhaDesativada: index !== 0,
+                    }
+              "
+              @click="selecionarLinha = item.index"
+            >
+              <td class="text-center" style="border: solid 1px grey">
+                {{ item.esteira }}
+              </td>
+              <td class="text-center" style="border: solid 1px grey">
+                {{ item.nome }}
+              </td>
+              <td
+                class="text-center font-weight-bold"
+                style="border: solid 1px grey"
+              >
+                {{ item.codigoFuncionario }}
+              </td>
+            </tr>
+          </tbody>
+        </template>
+      </v-simple-table>
+      <v-simple-table v-else fixed-header dense class="mt-4 ml-3 mr-3">
+        <template v-slot:default>
+          <thead>
+            <tr>
+              <th class="text-center">Esteira</th>
+              <th class="text-center">Nome</th>
+              <th class="text-center">Código</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="(item, index) in selecionados"
+              :key="index"
+              :class="{
+                linhaSelecionada: index === 0,
+                linhaDesativada: index !== 0,
+              }"
+              @click="rowClicked(item)"
+            >
+              <td class="text-center" style="border: solid 1px grey">
+                {{ item.esteira }}
+              </td>
+              <td class="text-center" style="border: solid 1px grey">
+                {{ item.nome }}
+              </td>
+              <td
+                class="text-center font-weight-bold"
+                style="border: solid 1px grey"
+              >
+                {{ item.codigoFuncionario }}
+              </td>
+            </tr>
+          </tbody>
+        </template>
+      </v-simple-table>
+      <v-form
+        v-if="selecionados.length > 0"
+        ref="form"
+        @submit.prevent="&quot;&quot;;"
+      >
+        <validation-observer ref="observerRelacionamentoIndividual">
+          <v-container fluid grid-list-xs>
+            <v-row dense>
+              <v-col cols="12" xl="6" lg="6" md="6" xs="12">
+                <validation-provider
+                  v-slot="{ errors }"
+                  name="Produto"
+                  rules="required"
+                  vid="produtoDesossaItemId"
+                >
+                  <v-autocomplete
+                    v-model="
+                      formularioRelacionamentoIndividual.produtoDesossaItemId
+                    "
+                    :items="produtosDesossaItensDropdown"
+                    :disabled="controleModal.exibir"
+                    :error-messages="errors"
+                    :hide-details="!errors.length"
+                    dense
+                    class="required"
+                    item-value="id"
+                    item-text="descricao"
+                    label="Produto"
+                    outlined
+                  />
+                </validation-provider>
+              </v-col>
+              <v-col cols="12" xl="3" lg="3" md="3" xs="12">
+                <validation-provider
+                  v-slot="{ errors }"
+                  name="Quantidade Peças"
+                  rules="required"
+                  vid="quantidade"
+                >
+                  <v-text-field
+                    v-model="formularioRelacionamentoIndividual.quantidade"
+                    v-mask="'##########'"
+                    :disabled="controleModal.exibir"
+                    :error-messages="errors"
+                    :hide-details="!errors.length"
+                    class="required"
+                    type="number"
+                    dense
+                    label="Quantidade Peças"
+                    outlined
+                  />
+                </validation-provider>
+              </v-col>
+              <v-col cols="12" xl="3" lg="3" md="3" xs="12">
+                <validation-provider
+                  v-slot="{ errors }"
+                  name="Esteira"
+                  rules="required"
+                  vid="esteira"
+                >
+                  <v-text-field
+                    v-model="formularioRelacionamentoIndividual.esteira"
+                    v-mask="'##########'"
+                    :disabled="controleModal.exibir"
+                    :error-messages="errors"
+                    :hide-details="!errors.length"
+                    class="required"
+                    type="number"
+                    dense
+                    label="Esteira"
+                    outlined
+                    @keypress.enter="inserirRelacionamento()"
+                  />
+                </validation-provider>
+              </v-col>
+              <v-col cols="12" xl="3" lg="3" md="3" xs="12">
+                <validation-provider
+                  v-slot="{ errors }"
+                  name="Horas"
+                  rules="required"
+                  vid="horas"
+                >
+                  <v-text-field
+                    v-model="formularioRelacionamentoIndividual.horas"
+                    v-moeda="{ negativo: false, decimal: 2 }"
+                    :error-messages="errors"
+                    :hide-details="!errors.length"
+                    :disabled="controleModal.exibir"
+                    dense
+                    label="Horas Trabalhadas"
+                    outlined
+                  />
+                  <small>
+                    {{ formularioRelacionamentoIndividualHoraTrabalhada }}
+                  </small>
+                </validation-provider>
+              </v-col>
+            </v-row>
+          </v-container>
+        </validation-observer>
+      </v-form>
+    </modal>
+    <v-dialog v-model="modalAltorizacao" max-width="320px" persistent>
+      <v-card class="pa-0">
+        <v-card-title class="justify-center">
+          <v-img :src="logo" class="ma-3" max-width="250" />
+        </v-card-title>
+        <v-card-text>
+          <v-form autocomplete="off">
+            <validation-observer ref="observer2">
+              <v-row>
+                <v-col cols="12">
+                  <validation-provider
+                    v-slot="{ errors }"
+                    name="Login"
+                    rules="required"
+                    vid="login"
+                  >
+                    <v-text-field
+                      ref="login"
+                      v-model="formularioLogin.login"
+                      v-uppercase
+                      :error-messages="errors"
+                      autofocus
+                      append-icon="mdi-account"
+                      class="required"
+                      dense
+                      hide-details
+                      label="Usuário"
+                      outlined
+                      placeholder="00000-USUARIO"
+                      type="text"
+                    />
+                  </validation-provider>
+                </v-col>
+                <v-col cols="12">
+                  <validation-provider
+                    v-slot="{ errors }"
+                    name="Senhas"
+                    rules="required"
+                    vid="senha"
+                  >
+                    <v-text-field
+                      ref="senha"
+                      v-model="formularioLogin.senha"
+                      :append-icon="!verSenha ? 'mdi-lock' : 'mdi-lock-open'"
+                      :error-messages="errors"
+                      :type="!verSenha ? 'password' : 'text'"
+                      class="required"
+                      dense
+                      hide-details
+                      label="Senha"
+                      outlined
+                      placeholder="****"
+                      @click:append="verSenha = !verSenha"
+                      @keydown.enter="confirmarCiente()"
+                    />
+                  </validation-provider>
+                </v-col>
+                <small>
+                  <span class="red--text">*</span>
+                  campos requeridos.
+                </small>
+              </v-row>
+            </validation-observer>
+          </v-form>
+        </v-card-text>
+        <v-divider />
+        <v-card-actions>
+          <v-row dense>
+            <v-col cols="6" class="py-0">
+              <v-btn
+                block
+                :color="$vuetify.theme.dark ? '' : 'primary'"
+                dark
+                small
+                @click="confirmarCiente()"
+              >
+                <v-icon left size="20"> mdi-check </v-icon>
+                Confirmar
+              </v-btn>
+            </v-col>
+            <v-col cols="6" class="py-0">
+              <v-btn
+                block
+                color="error"
+                dark
+                small
+                @click="
+                  (modalAltorizacao = false),
+                    (formularioLogin.login = null),
+                    (formularioLogin.senha = null)
+                "
+              >
+                <v-icon left size="20"> mdi-cancel </v-icon>
+                Cancelar
+              </v-btn>
+            </v-col>
+          </v-row>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+    <v-dialog v-model="modalCalculo" max-width="400" persistent>
+      <v-card class="pa-0">
+        <v-card-title class="justify-center">
+          <v-img :src="logo" class="ma-3" max-width="250" />
+        </v-card-title>
+        <v-card-text>
+          <v-form autocomplete="off">
+            <validation-observer ref="observer3">
+              <v-row>
+                <v-col cols="8">
+                  <validation-provider
+                    v-slot="{ errors }"
+                    name="DataInicio"
+                    rules="required"
+                    vid="dataInicio"
+                  >
+                    <date-picker
+                      v-model="formularioCalculo.inicio"
+                      :error-messages="errors"
+                      :hide-details="!errors.length"
+                      disabled
+                      type="date"
+                      dense
+                      label="Data"
+                      outlined
+                    />
+                  </validation-provider>
+                </v-col>
+                <v-col cols="4">
+                  <v-text-field
+                    v-model="formularioCalculo.horaInicio"
+                    v-mask="'##:##'"
+                    hide-details
+                    dense
+                    label="Entrada"
+                    outlined
+                    @blur="confirmarHoraCalculo()"
+                  />
+                </v-col>
+                <v-col cols="8">
+                  <validation-provider
+                    v-slot="{ errors }"
+                    name="DataFim"
+                    rules="required"
+                    vid="dataFim"
+                  >
+                    <date-picker
+                      v-model="formularioCalculo.fim"
+                      :error-messages="errors"
+                      :hide-details="!errors.length"
+                      disabled
+                      type="date"
+                      dense
+                      label="Data"
+                      outlined
+                    />
+                  </validation-provider>
+                </v-col>
+                <v-col cols="4">
+                  <v-text-field
+                    v-model="formularioCalculo.horaFim"
+                    v-mask="'##:##'"
+                    hide-details
+                    dense
+                    label="Saida"
+                    outlined
+                    @blur="confirmarHoraCalculo()"
+                  />
+                </v-col>
+                <v-col cols="12">
+                  <v-text-field
+                    v-model="formularioCalculo.hora"
+                    disabled
+                    hide-details
+                    dense
+                    label="Horas Expediente"
+                    outlined
+                  />
+                  <small>
+                    <span class="red--text">*</span>
+                    {{ horaDescricao }}
+                  </small>
+                </v-col>
+                <v-col cols="12">
+                  <v-text-field
+                    v-model="formularioCalculo.descontos"
+                    v-moeda="{ negativo: false, decimal: 2 }"
+                    hide-details
+                    dense
+                    label="Descontos Totais (Almoço, Paradas etc...)"
+                    outlined
+                  />
+                  <small>
+                    <span class="red--text">*</span>
+                    {{ descontoDescricao }}
+                  </small>
+                </v-col>
+                <v-col cols="12">
+                  <v-text-field
+                    :value="horaLiquida"
+                    disabled
+                    hide-details
+                    dense
+                    label="Hora Líquida"
+                    outlined
+                  />
+                </v-col>
+              </v-row>
+            </validation-observer>
+          </v-form>
+        </v-card-text>
+        <v-divider />
+        <v-card-actions>
+          <v-row dense>
+            <v-col cols="6" class="py-0">
+              <v-btn
+                block
+                :color="$vuetify.theme.dark ? '' : 'primary'"
+                dark
+                small
+                @click="inserirHoraCalculo()"
+              >
+                <v-icon left size="20"> mdi-check </v-icon>
+                Confirmar
+              </v-btn>
+            </v-col>
+            <v-col cols="6" class="py-0">
+              <v-btn
+                block
+                color="error"
+                dark
+                small
+                @click="
+                  (modalCalculo = false),
+                    (formularioCalculo.inicio = null),
+                    (formularioCalculo.fim = null)
+                "
+              >
+                <v-icon left size="20"> mdi-cancel </v-icon>
+                Cancelar
+              </v-btn>
+            </v-col>
+          </v-row>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+    <v-dialog v-model="modalResumoProdutividade" width="500">
+      <v-card dense>
+        <v-card-title>
+          Colaborador - {{ resumoLinha }} <br />
+          <v-spacer />
+          <v-btn class="mx-auto" icon @click="fecharResumoProdutividade()">
+            <v-icon size="30"> > mdi-close </v-icon>
+          </v-btn>
+        </v-card-title>
+        <v-divider class="pb-3" />
+
+        <v-card-text class="overflow-auto px-2" style="height: 70vh">
+          <v-card
+            v-for="item in itensResumo"
+            :key="item.id"
+            dense
+            outlined
+            class="font-weight-bold justify-space-between black--text my-1"
+            style="border: 2px solid #ddd; border-radius: 5px"
+          >
+            <v-card-text
+              class="font-weight-bold black--text justify-space-between"
+            >
+              <v-row>
+                <v-col cols="6" xl="6" lg="6" md="6" xs="6">
+                  <div
+                    class="mx-2 d-flex justify-space-between"
+                    style="border-bottom: 0.5px dashed #ddd"
+                  >
+                    Produto
+                    <div
+                      class="balanca_primary--text font-weight-medium text-end"
+                    >
+                      {{ item.produtoDescricao }}
+                    </div>
+                  </div>
+                  <div
+                    class="mx-2 d-flex justify-space-between"
+                    style="border-bottom: 0.5px dashed #ddd"
+                  >
+                    Quantidade
+                    <div
+                      class="balanca_primary--text font-weight-medium text-end"
+                    >
+                      {{ item.quantidade }}
+                    </div>
+                  </div>
+                  <div
+                    class="mx-2 d-flex justify-space-between"
+                    style="border-bottom: 0.5px dashed #ddd"
+                  >
+                    Horas
+                    <div
+                      class="balanca_primary--text font-weight-medium text-end"
+                    >
+                      {{ item.horas }}
+                    </div>
+                  </div>
+                </v-col>
+                <v-col cols="6" xl="6" lg="6" md="6" xs="6">
+                  <div
+                    class="mx-2 d-flex justify-space-between"
+                    style="border-bottom: 0.5px dashed #ddd"
+                  >
+                    Conferente
+                    <div
+                      class="balanca_primary--text font-weight-medium text-end"
+                    >
+                      {{ item.conferidoPor }}
+                    </div>
+                  </div>
+                  <div
+                    class="mx-2 d-flex justify-space-between"
+                    style="border-bottom: 0.5px dashed #ddd"
+                  >
+                    Data\Hora
+                    <div
+                      class="balanca_primary--text font-weight-medium text-end"
+                    >
+                      {{ item.conferidoEm }}
+                    </div>
+                  </div>
+                </v-col>
+              </v-row>
+            </v-card-text>
+          </v-card>
+        </v-card-text>
+
+        <v-divider />
+        <v-card-actions class="py-1 px-4 body-2 font-weight-bold">
+          Registros: {{ itensResumo.length }}
+          <v-spacer />
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+    <modal
+      v-model="modalRelacionamento"
+      :options="optionsModal"
+      @input="
+        (modalRelacionamento = false),
+          resetRelacionamento(),
+          listarRelacionamento()
+      "
+      @salvar="inserirRelacionamento()"
+      @editar="(controleModal.exibir = false), (controleModal.editar = true)"
+    >
+      <template slot="maisOpcoes">
+        <v-list class="pa-0" dense>
+          <v-list-item
+            @click="
+              aviso = {
+                modal: true,
+                key: 'excluirRelacionamento',
+                text: 'Deseja realmente excluir esse registro?',
+              }
+            "
+          >
+            <v-list-item-icon class="mr-3">
+              <v-icon color="primary"> mdi-delete </v-icon>
+            </v-list-item-icon>
+            <v-list-item-content>
+              <v-list-item-title> Excluir registro </v-list-item-title>
+            </v-list-item-content>
+          </v-list-item>
+        </v-list>
+      </template>
+      <v-form @submit.prevent="&quot;&quot;;">
+        <validation-observer ref="observerRelacionamento">
+          <v-container fluid grid-list-xs>
+            <v-row dense>
+              <v-col cols="12" xl="2" lg="2" md="2" xs="12">
+                <v-text-field
+                  v-model="formularioRelacionamento.id"
+                  v-mask="'###########'"
+                  disabled
+                  hide-details
+                  dense
+                  label="Id"
+                  outlined
+                />
+              </v-col>
+              <v-col cols="12" xl="4" lg="4" md="4" xs="12">
+                <validation-provider
+                  v-slot="{ errors }"
+                  name="Produto"
+                  rules="required"
+                  vid="produtoDesossaItemId"
+                >
+                  <v-autocomplete
+                    v-model="formularioRelacionamento.produtoDesossaItemId"
+                    :items="produtosDesossaItensDropdown"
+                    :disabled="controleModal.exibir"
+                    :error-messages="errors"
+                    :hide-details="!errors.length"
+                    dense
+                    class="required"
+                    item-value="id"
+                    item-text="descricao"
+                    label="Produto"
+                    outlined
+                  />
+                </validation-provider>
+              </v-col>
+              <v-col cols="12" xl="3" lg="3" md="3" xs="12">
+                <validation-provider
+                  v-slot="{ errors }"
+                  name="Quantidade Peças"
+                  rules="required"
+                  vid="quantidade"
+                >
+                  <v-text-field
+                    v-model="formularioRelacionamento.quantidade"
+                    v-mask="'##########'"
+                    :disabled="controleModal.exibir"
+                    :error-messages="errors"
+                    :hide-details="!errors.length"
+                    class="required"
+                    type="number"
+                    dense
+                    label="Quantidade Peças"
+                    outlined
+                  />
+                </validation-provider>
+              </v-col>
+              <v-col cols="12" xl="3" lg="3" md="3" xs="12">
+                <validation-provider
+                  v-slot="{ errors }"
+                  name="Esteira"
+                  rules="required"
+                  vid="esteira"
+                >
+                  <v-text-field
+                    v-model="formularioRelacionamento.esteira"
+                    v-mask="'##########'"
+                    :disabled="controleModal.exibir"
+                    :error-messages="errors"
+                    :hide-details="!errors.length"
+                    class="required"
+                    type="number"
+                    dense
+                    label="Esteira"
+                    outlined
+                    @keypress.enter="inserirRelacionamento()"
+                  />
+                </validation-provider>
+              </v-col>
+              <v-col cols="12" xl="3" lg="3" md="3" xs="12">
+                <validation-provider
+                  v-slot="{ errors }"
+                  name="Horas"
+                  rules="required"
+                  vid="horas"
+                >
+                  <v-text-field
+                    v-model="formularioRelacionamento.horas"
+                    v-moeda="{ negativo: false, decimal: 2 }"
+                    :error-messages="errors"
+                    :hide-details="!errors.length"
+                    :disabled="controleModal.exibir"
+                    dense
+                    label="Horas Trabalhadas"
+                    outlined
+                  />
+                  <small>
+                    {{ formularioRelacionamentoHoraTrabalhada }}
+                  </small>
+                </validation-provider>
+              </v-col>
+              <v-col
+                v-if="!controleModal.inserir"
+                cols="12"
+                xl="3"
+                lg="3"
+                md="3"
+                xs="12"
+              >
+                <validation-provider
+                  v-slot="{ errors }"
+                  name="Conferido Em"
+                  rules="required"
+                  vid="conferidoEm"
+                >
+                  <v-text-field
+                    v-model="formularioRelacionamento.conferidoEm"
+                    v-mask="'##/##/#### ##:##:##'"
+                    :disabled="controleModal.exibir"
+                    :error-messages="errors"
+                    :hide-details="!errors.length"
+                    class="required"
+                    dense
+                    label="Conferido Em"
+                    outlined
+                  />
+                </validation-provider>
+              </v-col>
+              <v-col
+                v-if="!controleModal.inserir"
+                cols="12"
+                xl="3"
+                lg="3"
+                md="3"
+                xs="12"
+              >
+                <validation-provider
+                  v-slot="{ errors }"
+                  name="Alterado Em"
+                  vid="alteradoEm"
+                >
+                  <v-text-field
+                    v-model="formularioRelacionamento.alteradoEm"
+                    v-mask="'##/##/#### ##:##:##'"
+                    :disabled="controleModal.exibir"
+                    :error-messages="errors"
+                    :hide-details="!errors.length"
+                    class="required"
+                    dense
+                    label="Alterado Em"
+                    outlined
+                  />
+                </validation-provider>
+              </v-col>
+            </v-row>
+          </v-container>
+        </validation-observer>
+      </v-form>
+    </modal>
+    <modal
+      v-model="modalHoraTrabalhada"
+      :options="optionsModalHora"
+      @input="modalHoraTrabalhada = false"
+      @salvar="salvarHorasMassa()"
+    >
+      <v-form @submit.prevent="&quot;&quot;;">
+        <validation-observer ref="observerRelacionamento">
+          <v-container fluid grid-list-xs>
+            <v-row dense>
+              <v-col cols="12" xl="12" lg="12" md="12" xs="12">
+                <v-text-field
+                  v-model="horasTrabalhadasMassa"
+                  v-moeda="{ negativo: false, decimal: 2 }"
+                  hide-details
+                  dense
+                  label="Horas Trabalhadas"
+                  outlined
+                />
+                <small>
+                  {{ formularioHoraTrabalhadaMassa }}
+                </small>
+              </v-col>
+            </v-row>
+          </v-container>
+        </validation-observer>
+      </v-form>
+    </modal>
+    <modal
+      v-model="modalDuplicarItens"
+      :options="optionsModalDuplicar"
+      @input="modalDuplicarItens = false"
+      @salvar="duplicarRegistrosDia()"
+    >
+      <v-form @submit.prevent="&quot;&quot;;">
+        <validation-observer ref="observerDuplicarItens">
+          <v-container fluid grid-list-xs>
+            <v-row dense>
+              <v-col cols="12" xl="12" lg="12" md="12" xs="12">
+                <validation-provider
+                  v-slot="{ errors }"
+                  name="Data"
+                  rules="required"
+                  vid="data"
+                >
+                  <date-picker
+                    v-model="dataDuplicidade"
+                    dense
+                    :error-messages="errors"
+                    :hide-details="!errors.length"
+                    class="required"
+                    label="Data"
+                    outlined
+                  />
+                </validation-provider>
+              </v-col>
+              <v-col cols="12" xl="12" lg="12" md="12" xs="12">
+                <span class="title">
+                  {{ selecionados.length }} registros serão criados na data
+                  informada
+                </span>
+              </v-col>
+            </v-row>
+          </v-container>
+        </validation-observer>
+      </v-form>
+    </modal>
+
+    <template slot="formulario">
+      <v-form @submit.prevent="&quot;&quot;;">
+        <validation-observer ref="observer">
+          <v-container fluid grid-list-xs>
+            <v-row dense>
+              <v-col cols="12" xl="2" lg="2" md="3" xs="12">
+                <v-text-field
+                  v-model="formulario.id"
+                  v-mask="'###########'"
+                  disabled
+                  hide-details
+                  dense
+                  label="Documento"
+                  outlined
+                />
+              </v-col>
+              <v-col cols="12" xl="2" lg="2" md="4" xs="12">
+                <validation-provider
+                  v-slot="{ errors }"
+                  name="Data"
+                  rules="required"
+                  vid="data"
+                >
+                  <date-picker
+                    v-model="formulario.data"
+                    :disabled="controle.exibir || formulario.status >= 2"
+                    :error-messages="errors"
+                    :hide-details="!errors.length"
+                    class="required"
+                    dense
+                    label="Data"
+                    outlined
+                  />
+                </validation-provider>
+              </v-col>
+              <v-col cols="12" xl="6" lg="6" md="12" xs="12">
+                <v-text-field
+                  ref="esteira"
+                  v-model="formulario.esteira"
+                  :disabled="controle.exibir || formulario.status >= 2"
+                  hide-details
+                  dense
+                  label="Esteira"
+                  outlined
+                  type="number"
+                />
+              </v-col>
+              <v-col cols="12" xl="2" lg="2" md="5" xs="12">
+                <validation-provider
+                  v-slot="{ errors }"
+                  name="Código Funcionário"
+                  rules="required"
+                  vid="codigoFuncionario"
+                >
+                  <v-text-field
+                    ref="codFun"
+                    v-model="formulario.codigoFuncionario"
+                    v-mask="'###########'"
+                    :disabled="controle.exibir || formulario.status >= 2"
+                    :error-messages="errors"
+                    :hide-details="!errors.length"
+                    class="required"
+                    type="number"
+                    dense
+                    label="Código Funcionário"
+                    outlined
+                    @keypress.enter="codigoFuncionarioPesquisar()"
+                    @blur="!formulario.nome ? codigoFuncionarioPesquisar() : ''"
+                  />
+                </validation-provider>
+              </v-col>
+              <v-col cols="12" xl="6" lg="6" md="12" xs="12">
+                <v-text-field
+                  v-model="formulario.nome"
+                  disabled
+                  hide-details
+                  dense
+                  label="Nome Funcionário"
+                  outlined
+                />
+              </v-col>
+              <!-- <v-col v-if="!controle.inserir" cols="10">
+                <v-text-field
+                  v-model="formulario.horasTrabalhadas"
+                  v-moeda="{ negativo: false, decimal: 2 }"
+                  hide-details
+                  :disabled="controle.exibir || formulario.status >= 2"
+                  dense
+                  label="Horas Trabalhadas"
+                  outlined
+                />
+                <small>
+                  {{ formularioHoraTrabalhada }}
+                </small>
+              </v-col> -->
+              <!-- <v-col v-if="!controle.inserir" cols="2">
+                <v-btn
+                  :disabled="controle.exibir || formulario.status >= 2"
+                  color="blue"
+                  height="39"
+                  class="pr-3 pl-1"
+                  style="margin-left: -2px"
+                  @click="abrirModalCalculo()"
+                >
+                  <v-icon color="white">mdi-cached</v-icon>
+                  <span style="color: white">Calcular</span>
+                </v-btn>
+              </v-col> -->
+              <!-- <v-col
+                v-if="!controle.inserir"
+                cols="12"
+                xl="3"
+                lg="3"
+                md="3"
+                xs="12"
+              >
+                <validation-provider
+                  v-slot="{ errors }"
+                  name="Conferido Em"
+                  rules="required"
+                  vid="conferidoEm"
+                >
+                  <v-text-field
+                    v-model="formulario.conferidoEm"
+                    v-mask="'##/##/#### ##:##:##'"
+                    :disabled="controle.exibir || formulario.status >= 2"
+                    :error-messages="errors"
+                    :hide-details="!errors.length"
+                    class="required"
+                    dense
+                    label="Conferido Em"
+                    outlined
+                  />
+                </validation-provider>
+              </v-col>
+              <v-col
+                v-if="!controle.inserir"
+                cols="12"
+                xl="3"
+                lg="3"
+                md="3"
+                xs="12"
+              >
+                <validation-provider
+                  v-slot="{ errors }"
+                  name="Alterado Em"
+                  vid="alteradoEm"
+                >
+                  <v-text-field
+                    v-model="formulario.alteradoEm"
+                    v-mask="'##/##/#### ##:##:##'"
+                    :disabled="controle.exibir || formulario.status >= 2"
+                    :error-messages="errors"
+                    :hide-details="!errors.length"
+                    class="required"
+                    dense
+                    label="Alterado Em"
+                    outlined
+                  />
+                </validation-provider>
+              </v-col> -->
+            </v-row>
+          </v-container>
+        </validation-observer>
+      </v-form>
+    </template>
+
+    <template slot="acao">
+      <v-text-field
+        v-if="!controle.inserir"
+        v-model="codigoFuncionarioTroca"
+        v-mask="'###########'"
+        :disabled="controle.inserir"
+        hide-details
+        dense
+        type="number"
+        style="width: 200px"
+        label="Carregar Outro Código Funcionário"
+        outlined
+      />
+      <v-btn
+        v-if="!controle.inserir"
+        :disabled="controle.inserir"
+        color="green"
+        height="41"
+        style="margin-left: -2px; border-radius: 0px !important"
+        @click="carregarOutroFuncionario()"
+      >
+        <v-icon>mdi-cached</v-icon>
+      </v-btn>
+    </template>
+
+    <template slot="maisOpcoes">
+      <v-list class="pa-0" dense>
+        <v-list-item
+          :disabled="formulario.status >= 2"
+          @click="
+            aviso = {
+              modal: true,
+              key: 'excluir',
+              text: 'Deseja realmente excluir esse registro?',
+            }
+          "
+        >
+          <v-list-item-icon class="mr-3">
+            <v-icon color="primary"> mdi-delete </v-icon>
+          </v-list-item-icon>
+          <v-list-item-content>
+            <v-list-item-title> Excluir registro </v-list-item-title>
+          </v-list-item-content>
+        </v-list-item>
+        <v-list-item
+          :disabled="formulario.status !== 1"
+          @click="
+            aviso = {
+              modal: true,
+              key: 'finalizarDia',
+              text: 'Deseja realmente FINALIZAR O DIA deste COLABORADOR?',
+            }
+          "
+        >
+          <v-list-item-icon class="mr-3">
+            <v-icon color="green"> mdi-check-decagram-outline </v-icon>
+          </v-list-item-icon>
+          <v-list-item-content>
+            <v-list-item-title> Finalizar Dia Colaborador </v-list-item-title>
+          </v-list-item-content>
+        </v-list-item>
+        <v-list-item
+          :disabled="formulario.status !== 2"
+          @click="
+            aviso = {
+              modal: true,
+              key: 'voltarPendente',
+              text: 'Deseja realmente voltar o registro deste COLABORADOR para pendente?',
+            }
+          "
+        >
+          <v-list-item-icon class="mr-3">
+            <v-icon color="green"> mdi-keyboard-return </v-icon>
+          </v-list-item-icon>
+          <v-list-item-content>
+            <v-list-item-title> Voltar para Pendente</v-list-item-title>
+          </v-list-item-content>
+        </v-list-item>
+      </v-list>
+    </template>
+
+    <template v-if="formulario.id" slot="relacionamento">
+      <tabela
+        ref="paginacaoFake"
+        :colunas="colunasRelacionamento"
+        :registros="registrosRelacionamento"
+        :paginacao="paginacaoFake"
+        :registros-por-pagina="20"
+        exibir
+        :desabilitado="formulario.status >= 2"
+        height-auto
+        toolbar-grid
+        toolbar-hight="46"
+        titulo="Quantidade de peças do funcionário"
+        @paginacao="paginacaoFake = $event"
+        @exibir="exibirRelacionamento($event)"
+        @dblclick="exibirRelacionamento($event.id)"
+      >
+        <template slot="botoes">
+          <v-btn
+            color="primary"
+            class="white--text mx-2"
+            depressed
+            :disabled="formulario.status >= 2"
+            @click="abrirInserirProduto()"
+          >
+            <v-icon left size="20"> mdi-plus-thick </v-icon>
+            Adicionar
+          </v-btn>
+          <v-btn color="primary" outlined @click="listarRelacionamento()">
+            <v-icon left> mdi-refresh </v-icon>
+            Atualizar
+          </v-btn>
+        </template>
+      </tabela>
+    </template>
+
+    <template slot="listagem">
+      <filtro
+        v-if="!$vuetify.breakpoint.mobile"
+        :options="optionsFilter"
+        @adicionar="adicionarFuncionario()"
+        @clearFilters="limparFiltros(), listarRegistros()"
+        @search="listarRegistros()"
+      >
+        <template slot="filtros">
+          <v-container class="my-0 py-0" fluid>
+            <validation-observer ref="observerFiltro">
+              <v-row class="pa-0" dense>
+                <v-col cols="12" xl="2" lg="2" md="3" xs="12">
+                  <v-text-field
+                    v-model="filtro.id"
+                    v-mask="'###########'"
+                    hide-details
+                    dense
+                    label="Documento"
+                    outlined
+                    @keypress.enter="listarRegistros()"
+                  />
+                </v-col>
+                <v-col cols="12" xl="2" lg="2" md="4" xs="12">
+                  <validation-provider
+                    v-slot="{ errors }"
+                    name="Data"
+                    rules="required"
+                    vid="data"
+                  >
+                    <date-picker
+                      v-model="filtro.data"
+                      dense
+                      :error-messages="errors"
+                      :hide-details="!errors.length"
+                      class="required"
+                      label="Data"
+                      outlined
+                    />
+                  </validation-provider>
+                </v-col>
+                <v-col cols="12" xl="2" lg="2" md="5" xs="12">
+                  <validation-provider
+                    v-slot="{ errors }"
+                    name="Código Funcionário"
+                    vid="codigoFuncionario"
+                  >
+                    <v-text-field
+                      v-model="filtro.codigoFuncionario"
+                      v-mask="'###########'"
+                      :error-messages="errors"
+                      :hide-details="!errors.length"
+                      dense
+                      label="Código Funcionário"
+                      outlined
+                      @keypress.enter="listarRegistros()"
+                    />
+                  </validation-provider>
+                </v-col>
+              </v-row>
+            </validation-observer>
+          </v-container>
+        </template>
+      </filtro>
+
+      <filtro-mobile
+        v-if="$vuetify.breakpoint.mobile"
+        :options="optionsFilter"
+        @adicionar="adicionarFuncionario()"
+        @clearFilters="limparFiltros(), listarRegistros()"
+        @search="listarRegistros()"
+      >
+        <template slot="filtros">
+          <v-container class="my-0 py-0" fluid>
+            <validation-observer ref="observerFiltroMobile">
+              <v-row class="pa-0" dense>
+                <v-col cols="6">
+                  <validation-provider
+                    v-slot="{ errors }"
+                    name="Documento"
+                    vid="id"
+                  >
+                    <v-text-field
+                      v-model="filtro.id"
+                      v-mask="'###########'"
+                      :error-messages="errors"
+                      :hide-details="!errors.length"
+                      dense
+                      label="Documento"
+                      outlined
+                      @keypress.enter="listarRegistros()"
+                    />
+                  </validation-provider>
+                </v-col>
+                <v-col cols="6">
+                  <validation-provider
+                    v-slot="{ errors }"
+                    name="Código Funcionário"
+                    vid="codigoFuncionario"
+                  >
+                    <v-text-field
+                      v-model="filtro.codigoFuncionario"
+                      v-mask="'###########'"
+                      :error-messages="errors"
+                      :hide-details="!errors.length"
+                      dense
+                      label="Código Funcionário"
+                      outlined
+                      @keypress.enter="listarRegistros()"
+                    />
+                  </validation-provider>
+                </v-col>
+                <v-col cols="6">
+                  <v-autocomplete
+                    v-model="filtro.item"
+                    :items="dropdownItem"
+                    hide-details
+                    clearable
+                    dense
+                    item-value="tarefa"
+                    item-text="descricao"
+                    label="Produto"
+                    outlined
+                  />
+                </v-col>
+                <v-col cols="6">
+                  <v-text-field
+                    v-model="filtro.esteira"
+                    v-mask="'###########'"
+                    hide-details
+                    dense
+                    label="Esteira"
+                    outlined
+                    @keypress.enter="listarRegistros()"
+                  />
+                </v-col>
+                <v-col cols="12">
+                  <validation-provider
+                    v-slot="{ errors }"
+                    name="Data"
+                    rules="required"
+                    vid="data"
+                  >
+                    <date-picker
+                      v-model="filtro.data"
+                      dense
+                      :error-messages="errors"
+                      :hide-details="!errors.length"
+                      class="required"
+                      label="Data"
+                      outlined
+                    />
+                  </validation-provider>
+                </v-col>
+              </v-row>
+            </validation-observer>
+          </v-container>
+        </template>
+      </filtro-mobile>
+
+      <tabela
+        ref="paginacaoFake"
+        :colunas="colunas"
+        :registros="registros"
+        :paginacao="paginacaoFake"
+        :registros-por-pagina="400"
+        class="mt-2"
+        exibir
+        selecionar
+        :selecionados.sync="selecionados"
+        height-auto
+        toolbar-grid
+        @paginacao="paginacaoFake = $event"
+        @exibir="exibirRegistro($event)"
+      >
+        <template v-slot:totais>
+          <totais :items="totalProdutividade" />
+        </template>
+        <template v-slot:personalizado="{ registro }">
+          <v-chip
+            :color="registro.status.color ? registro.status.color : 'primary'"
+            :text-color="'white'"
+            class="font-weight-bold v-chip-status"
+            small
+            @click="dadosLinha(registro.id)"
+          >
+            {{ registro.status.text }}
+          </v-chip>
+        </template>
+        <template v-slot:botoes>
+          <v-chip
+            v-if="registros.length && quantidadePendente"
+            color="blue"
+            class="ma-1"
+            label
+            small
+            text-color="white"
+          >
+            {{ quantidadePendente }}
+          </v-chip>
+          <v-chip
+            v-if="registros.length && quantidadeFinalizada"
+            color="green"
+            class="ma-1"
+            label
+            small
+            text-color="white"
+          >
+            {{ quantidadeFinalizada }}
+          </v-chip>
+          <v-chip
+            v-if="registros.length && quantidadeImportada"
+            color="grey"
+            class="ma-1"
+            label
+            small
+            text-color="white"
+          >
+            {{ quantidadeImportada }}
+          </v-chip>
+          <v-btn
+            :disabled="!selecionados.length"
+            small
+            class="mr-2"
+            outlined
+            color="primary"
+            @click="abrirModalDuplicar()"
+          >
+            <v-icon left>mdi-expand-all-outline</v-icon>
+            Duplicar
+          </v-btn>
+          <v-btn
+            :disabled="proibirAlteracao || proibirAlteracaoInserção"
+            small
+            class="mr-2"
+            outlined
+            color="primary"
+            @click="modalRelacionamentos = true"
+          >
+            <v-icon left>mdi-plus</v-icon>
+            Qtd Peça
+          </v-btn>
+          <!-- <v-btn
+            :disabled="proibirAlteracao"
+            class="mr-2"
+            small
+            outlined
+            color="primary"
+            @click="modalHoraTrabalhada = true"
+          >
+            <v-icon>mdi-clock-time-seven-outline</v-icon>
+            Horas
+          </v-btn> -->
+          <v-btn
+            :disabled="proibirAlteracao"
+            small
+            outlined
+            color="green"
+            @click="
+              aviso = {
+                modal: true,
+                key: 'finalizarDiaMassa',
+                text: 'Deseja realmente FINALIZAR o dia de todos os registros selecionados?',
+              }
+            "
+          >
+            <v-icon left>mdi-check-decagram-outline</v-icon>
+            Finalizar
+          </v-btn>
+        </template>
+      </tabela>
+    </template>
+  </pagina>
+</template>
+
+<script>
+import { mapActions, mapState } from "vuex";
+import day from "@/plugins/dayjs";
+import moeda from "@tiig/moeda";
+
+export default {
+  name: "PaginaProdutividadeFuncionarioDesossa",
+
+  data: () => ({
+    aviso: {
+      modal: false,
+      key: null,
+      text: "",
+    },
+    selecionarLinha: null,
+    modalRelacionamentoMassa: false,
+    modalRelacionamentoIndividual: false,
+    modalRelacionamentos: false,
+    modalHoraTrabalhada: false,
+    verSenha: false,
+    selecionados: [],
+    modalResumoProdutividade: false,
+    colunas: [
+      {
+        text: "Ação",
+        align: "center",
+        sortable: false,
+        value: "acao",
+        width: 61,
+      },
+      {
+        text: "Esteira",
+        align: "center",
+        sortable: false,
+        value: "esteira",
+        width: 50,
+      },
+      {
+        text: "Status",
+        align: "center",
+        sortable: false,
+        value: "personalizado",
+        width: 50,
+      },
+      // {
+      //   text: "Status",
+      //   align: "center",
+      //   sortable: true,
+      //   value: "status",
+      //   width: 50,
+      // },
+      {
+        text: "Código",
+        align: "end",
+        sortable: true,
+        value: "codigoFuncionario",
+        width: 50,
+      },
+      {
+        text: "Nome",
+        align: "start",
+        sortable: true,
+        value: "nome",
+        width: 50,
+      },
+      {
+        text: "Horas",
+        align: "start",
+        sortable: true,
+        value: "horasTrabalhadas",
+        width: 50,
+      },
+      {
+        text: "Peças",
+        align: "end",
+        sortable: true,
+        value: "quantidade",
+        width: 50,
+      },
+      {
+        text: "Data",
+        align: "start",
+        sortable: true,
+        value: "data",
+        width: 50,
+      },
+      {
+        text: "Criado Por",
+        align: "start",
+        sortable: true,
+        value: "conferidoPor",
+        width: 50,
+      },
+      {
+        text: "Criado Em",
+        align: "start",
+        sortable: true,
+        value: "conferidoEm",
+        width: 50,
+      },
+      {},
+    ],
+    logo: require("@/assets/logo.png"),
+    formularioLogin: {
+      login: null,
+      senha: null,
+    },
+    dataDuplicidade: null,
+    modalDuplicarItens: false,
+    modalAltorizacao: false,
+    optionsAutorizacao: {
+      mensagem: null,
+      rotinaVerificacao: null,
+      autenticacao: {},
+    },
+    colunasRelacionamento: [
+      {
+        text: "Ação",
+        align: "center",
+        sortable: false,
+        value: "acao",
+        width: 61,
+      },
+      {
+        text: "Produto",
+        align: "start",
+        sortable: true,
+        value: "produtoDescricao",
+        width: 50,
+      },
+      {
+        text: "Quantidade",
+        align: "end",
+        sortable: true,
+        value: "quantidade",
+        width: 50,
+      },
+      {
+        text: "Horas",
+        align: "end",
+        sortable: true,
+        value: "horas",
+        width: 50,
+      },
+      {
+        text: "Esteira",
+        align: "end",
+        sortable: true,
+        value: "esteira",
+        width: 50,
+      },
+      {
+        text: "Conferido Por",
+        align: "start",
+        sortable: true,
+        value: "conferidoPor",
+        width: 50,
+      },
+      {
+        text: "Conferido Em",
+        align: "start",
+        sortable: true,
+        value: "conferidoEm",
+        width: 50,
+      },
+      {
+        text: "Alterado Por",
+        align: "start",
+        sortable: true,
+        value: "alteradoPor",
+        width: 50,
+      },
+      {
+        text: "Alterado Em",
+        align: "start",
+        sortable: true,
+        value: "alteradoEm",
+        width: 50,
+      },
+      {},
+    ],
+    controle: {
+      inserir: false,
+      exibir: false,
+      editar: false,
+    },
+    controleModal: {
+      inserir: false,
+      exibir: false,
+      editar: false,
+    },
+    filtro: {
+      id: null,
+      codigoFuncionario: null,
+      data: null,
+      item: null,
+      esteira: null,
+    },
+    formulario: {
+      id: null,
+      codigoFuncionario: null,
+      data: null,
+      esteira: null,
+      nome: null,
+      status: null,
+      loginColaborador: null,
+      conferidoPor: null,
+      conferidoEm: null,
+      alteradoPor: null,
+      alteradoEm: null,
+      horasTrabalhadas: null,
+    },
+    modalCalculo: false,
+    itensResumo: [],
+    tituloModalResumo: null,
+    formularioRelacionamento: {
+      id: null,
+      produtoDesossaItemId: null,
+      quantidade: null,
+      esteira: null,
+      conferidoPor: null,
+      conferidoEm: null,
+      alteradoPor: null,
+      alteradoEm: null,
+      horas: null,
+    },
+    formularioRelacionamentoMassa: {
+      produtoDesossaItemId: null,
+      quantidade: null,
+      esteira: null,
+      horas: null,
+    },
+    formularioRelacionamentoIndividual: {
+      produtoDesossaItemId: null,
+      quantidade: null,
+      esteira: null,
+      horas: null,
+    },
+    formularioCalculo: {
+      inicio: null,
+      fim: null,
+      horaFim: null,
+      horaInicio: null,
+      hora: null,
+      descontos: null,
+      liquido: null,
+    },
+    resumoLinha: null,
+    horasResumoLinha: null,
+    horasTrabalhadasMassa: null,
+    loading: false,
+    modal: false,
+    modalRelacionamento: false,
+    codigoFuncionarioTroca: null,
+    paginacaoFake: {
+      pagina: 1,
+      registros: 20,
+      totalRegistros: 0,
+    },
+  }),
+
+  computed: {
+    ...mapState("paginaProdutividadeFuncionarioDesossa", [
+      "produtosDesossaItensDropdown",
+      "registros",
+      "registrosRelacionamento",
+      "totalProdutividade",
+      "dropdownItem",
+    ]),
+    proibirAlteracao() {
+      if (this.selecionados.length) {
+        const statusIndevido = [];
+        for (const registro of this.selecionados) {
+          if (registro.statusCodigo !== 1) {
+            statusIndevido.push(1);
+          }
+        }
+
+        if (statusIndevido.length) {
+          return true;
+        } else {
+          return false;
+        }
+      } else {
+        return true;
+      }
+    },
+    proibirAlteracaoInserção() {
+      if (this.selecionados.length) {
+        const statusIndevido = [];
+        const esteiraDiferente = [];
+
+        for (const registro of this.selecionados) {
+          // if (registro.statusCodigo !== 1 || registro.quantidade) {
+          //   statusIndevido.push(1);
+          // }
+          if (
+            this.selecionados.length > 1 &&
+            this.selecionados[0].esteira !== registro.esteira
+          ) {
+            esteiraDiferente.push(1);
+          }
+        }
+
+        if (statusIndevido.length || esteiraDiferente.length) {
+          return true;
+        } else {
+          return false;
+        }
+      } else {
+        return true;
+      }
+    },
+    quantidadePendente() {
+      if (this.registros.length) {
+        let arrayPendente = [];
+
+        for (const item of this.registros) {
+          if (item.statusCodigo === 1) {
+            arrayPendente.push(1);
+          }
+        }
+
+        return arrayPendente.length;
+      } else {
+        return 0;
+      }
+    },
+    quantidadeFinalizada() {
+      if (this.registros.length) {
+        let arrayFinalizado = [];
+
+        for (const item of this.registros) {
+          if (item.statusCodigo === 2) {
+            arrayFinalizado.push(1);
+          }
+        }
+
+        return arrayFinalizado.length;
+      } else {
+        return 0;
+      }
+    },
+    quantidadeImportada() {
+      if (this.registros.length) {
+        let arrayImportado = [];
+
+        for (const item of this.registros) {
+          if (item.statusCodigo === 3) {
+            arrayImportado.push(1);
+          }
+        }
+
+        return arrayImportado.length;
+      } else {
+        return 0;
+      }
+    },
+    descontoDescricao() {
+      if (this.formularioCalculo.descontos) {
+        // Extrai as horas e minutos
+        const valorDescontos = moeda.strip(this.formularioCalculo.descontos);
+        const horas = Math.floor(valorDescontos);
+        const minutos = Math.round((valorDescontos - horas) * 100);
+
+        // Cria a string formatada
+        let resultado = "";
+
+        if (horas > 0) {
+          resultado += `${horas} hora${horas !== 1 ? "s" : ""}`;
+        }
+
+        if (minutos > 0) {
+          resultado += `${horas > 0 ? " e " : ""}${minutos} minuto${
+            minutos !== 1 ? "s" : ""
+          }`;
+        }
+
+        return resultado;
+      } else {
+        return "";
+      }
+    },
+    horaDescricao() {
+      if (this.formularioCalculo.hora) {
+        // Extrai as horas e minutos
+        const valorHora = moeda.strip(this.formularioCalculo.hora);
+        const horas = Math.floor(valorHora);
+        const minutos = Math.round((valorHora - horas) * 100);
+
+        // Cria a string formatada
+        let resultado = "";
+
+        if (horas > 0) {
+          resultado += `${horas} hora${horas !== 1 ? "s" : ""}`;
+        }
+
+        if (minutos > 0) {
+          resultado += `${horas > 0 ? " e " : ""}${minutos} minuto${
+            minutos !== 1 ? "s" : ""
+          }`;
+        }
+
+        return resultado;
+      } else {
+        return "";
+      }
+    },
+    formularioHoraTrabalhada() {
+      if (this.formulario.horasTrabalhadas) {
+        // Extrai as horas e minutos
+        const valorDescontos = moeda.strip(this.formulario.horasTrabalhadas);
+        const horas = Math.floor(valorDescontos);
+        const minutos = Math.round((valorDescontos - horas) * 100);
+
+        // Cria a string formatada
+        let resultado = "";
+
+        if (horas > 0) {
+          resultado += `${horas} hora${horas !== 1 ? "s" : ""}`;
+        }
+
+        if (minutos > 0) {
+          resultado += `${horas > 0 ? " e " : ""}${minutos} minuto${
+            minutos !== 1 ? "s" : ""
+          }`;
+        }
+
+        return resultado;
+      } else {
+        return "";
+      }
+    },
+    formularioRelacionamentoHoraTrabalhada() {
+      if (this.formularioRelacionamento.horas) {
+        // Extrai as horas e minutos
+        const valorDescontos = moeda.strip(this.formularioRelacionamento.horas);
+        const horas = Math.floor(valorDescontos);
+        const minutos = Math.round((valorDescontos - horas) * 100);
+
+        // Cria a string formatada
+        let resultado = "";
+
+        if (horas > 0) {
+          resultado += `${horas} hora${horas !== 1 ? "s" : ""}`;
+        }
+
+        if (minutos > 0) {
+          resultado += `${horas > 0 ? " e " : ""}${minutos} minuto${
+            minutos !== 1 ? "s" : ""
+          }`;
+        }
+
+        return resultado;
+      } else {
+        return "";
+      }
+    },
+    formularioRelacionamentoMassaHoraTrabalhada() {
+      if (this.formularioRelacionamentoMassa.horas) {
+        // Extrai as horas e minutos
+        const valorDescontos = moeda.strip(
+          this.formularioRelacionamentoMassa.horas
+        );
+        const horas = Math.floor(valorDescontos);
+        const minutos = Math.round((valorDescontos - horas) * 100);
+
+        // Cria a string formatada
+        let resultado = "";
+
+        if (horas > 0) {
+          resultado += `${horas} hora${horas !== 1 ? "s" : ""}`;
+        }
+
+        if (minutos > 0) {
+          resultado += `${horas > 0 ? " e " : ""}${minutos} minuto${
+            minutos !== 1 ? "s" : ""
+          }`;
+        }
+
+        return resultado;
+      } else {
+        return "";
+      }
+    },
+    formularioRelacionamentoIndividualHoraTrabalhada() {
+      if (this.formularioRelacionamentoIndividual.horas) {
+        // Extrai as horas e minutos
+        const valorDescontos = moeda.strip(
+          this.formularioRelacionamentoIndividual.horas
+        );
+        const horas = Math.floor(valorDescontos);
+        const minutos = Math.round((valorDescontos - horas) * 100);
+
+        // Cria a string formatada
+        let resultado = "";
+
+        if (horas > 0) {
+          resultado += `${horas} hora${horas !== 1 ? "s" : ""}`;
+        }
+
+        if (minutos > 0) {
+          resultado += `${horas > 0 ? " e " : ""}${minutos} minuto${
+            minutos !== 1 ? "s" : ""
+          }`;
+        }
+
+        return resultado;
+      } else {
+        return "";
+      }
+    },
+    formularioHoraTrabalhadaMassa() {
+      if (this.horasTrabalhadasMassa) {
+        // Extrai as horas e minutos
+        const valorDescontos = moeda.strip(this.horasTrabalhadasMassa);
+        const horas = Math.floor(valorDescontos);
+        const minutos = Math.round((valorDescontos - horas) * 100);
+
+        // Cria a string formatada
+        let resultado = "";
+
+        if (horas > 0) {
+          resultado += `${horas} hora${horas !== 1 ? "s" : ""}`;
+        }
+
+        if (minutos > 0) {
+          resultado += `${horas > 0 ? " e " : ""}${minutos} minuto${
+            minutos !== 1 ? "s" : ""
+          }`;
+        }
+
+        return resultado;
+      } else {
+        return "";
+      }
+    },
+    horaLiquida() {
+      // if (this.formularioCalculo.hora) {
+      //   if (this.formularioCalculo.descontos) {
+      //     return moeda.format(
+      //       moeda.strip(this.formularioCalculo.hora) -
+      //         moeda.strip(this.formularioCalculo.descontos),
+      //       2
+      //     );
+      //   } else {
+      //     return moeda.format(this.formularioCalculo.hora, 2);
+      //   }
+      // } else {
+      //   return null;
+      // }
+      return this.formularioCalculo.hora;
+    },
+    filtroValor() {
+      return !!(
+        this.filtro.id ||
+        this.filtro.codigoFuncionario ||
+        this.filtro.data ||
+        this.filtro.esteira ||
+        this.filtro.item
+      );
+    },
+    optionsFilter() {
+      return {
+        adicionar: true,
+        values: this.filtroValor,
+      };
+    },
+    optionsModal() {
+      return {
+        title: this.controleModal.inserir
+          ? "Adicionar Produto"
+          : "Informações do Produto",
+        width: 1000,
+        maisOpcoes: this.controleModal.editar,
+        actions: [
+          {
+            title:
+              this.controleModal.exibir && !this.controleModal.inserir
+                ? "Editar"
+                : "Salvar",
+            color: this.$vuetify.theme.dark ? "accent" : "primary",
+            icon:
+              this.controleModal.exibir && !this.controleModal.inserir
+                ? "mdi-pencil"
+                : "mdi-content-save",
+            emit:
+              this.controleModal.exibir && !this.controleModal.inserir
+                ? "editar"
+                : "salvar",
+            outlined: false,
+          },
+          {
+            title: "Cancelar",
+            color: "error",
+            icon: "mdi-cancel",
+            emit: "input",
+            outlined: false,
+          },
+        ],
+      };
+    },
+    optionsModalMassa() {
+      return {
+        title: "Adicionar Produto Agrupado",
+        width: 1000,
+        actions: [
+          {
+            title: "Salvar",
+            color: this.$vuetify.theme.dark ? "accent" : "primary",
+            icon: "mdi-content-save",
+            emit: "salvar",
+            outlined: false,
+          },
+          {
+            title: "Cancelar",
+            color: "error",
+            icon: "mdi-cancel",
+            emit: "input",
+            outlined: false,
+          },
+        ],
+      };
+    },
+    optionsModalIndividual() {
+      return {
+        title: "Adicionar Produto Agrupado",
+        width: 1000,
+        actions:
+          this.selecionados.length > 1
+            ? [
+                {
+                  title: "Próximo",
+                  color: this.$vuetify.theme.dark ? "accent" : "primary",
+                  icon: "mdi-arrow-right-bold",
+                  emit: "salvar",
+                  outlined: false,
+                },
+                {
+                  title: "Cancelar",
+                  color: "error",
+                  icon: "mdi-cancel",
+                  emit: "input",
+                  outlined: false,
+                },
+              ]
+            : [
+                {
+                  title: "Salvar",
+                  color: this.$vuetify.theme.dark ? "accent" : "primary",
+                  icon: "mdi-content-save",
+                  emit: "salvar",
+                  outlined: false,
+                },
+                {
+                  title: "Cancelar",
+                  color: "error",
+                  icon: "mdi-cancel",
+                  emit: "input",
+                  outlined: false,
+                },
+              ],
+      };
+    },
+    optionsModalRelacionamentos() {
+      return {
+        title: "Selecione o Tipo de Inclusão",
+        width: 400,
+        actions: [
+          {
+            title: "Cancelar",
+            color: "error",
+            icon: "mdi-cancel",
+            emit: "input",
+            outlined: false,
+          },
+        ],
+      };
+    },
+    optionsModalResumo() {
+      return {
+        title: "Resumo Produtividade",
+        width: 800,
+        actions: [
+          {
+            title: "Salvar",
+            color: "primary",
+            icon: "mdi-content-save",
+            emit: "salvar",
+            outlined: false,
+          },
+          {
+            title: "Cancelar",
+            color: "error",
+            icon: "mdi-cancel",
+            emit: "input",
+            outlined: false,
+          },
+        ],
+      };
+    },
+    optionsModalHora() {
+      return {
+        title: "Horas Trabalhadas",
+        width: 600,
+        actions: [
+          {
+            title: "Salvar",
+            color: "primary",
+            icon: "mdi-content-save",
+            emit: "salvar",
+            outlined: false,
+          },
+          {
+            title: "Cancelar",
+            color: "error",
+            icon: "mdi-cancel",
+            emit: "input",
+            outlined: false,
+          },
+        ],
+      };
+    },
+
+    optionsModalDuplicar() {
+      return {
+        title: "Duplicar Registros",
+        width: 600,
+        actions: [
+          {
+            title: "Salvar",
+            color: "primary",
+            icon: "mdi-content-save",
+            emit: "salvar",
+            outlined: false,
+          },
+          {
+            title: "Cancelar",
+            color: "error",
+            icon: "mdi-cancel",
+            emit: "input",
+            outlined: false,
+          },
+        ],
+      };
+    },
+  },
+
+  async created() {
+    await this.dropdownItens();
+    this.filtro.data = this.$day().format("YYYY-MM-DD");
+    await this.produtosDesossaItensDropdownListar();
+    setTimeout(() => {
+      this.listarRegistros();
+    }, 1000);
+  },
+
+  methods: {
+    ...mapActions("paginaProdutividadeFuncionarioDesossa", [
+      "produtosDesossaItensDropdownListar",
+      "proximoFuncionarioCarregar",
+      "obterFuncionario",
+
+      "listar",
+      "exibir",
+      "editar",
+      "salvar",
+      "excluir",
+
+      "listarItem",
+      "exibirItem",
+      "editarItem",
+      "salvarItem",
+      "excluirItem",
+
+      "salvarCiente",
+      "finalizarDiaFuncionario",
+      "finalizarDiaFuncionarioMassa",
+      "voltarDiaFuncionario",
+      "salvarHoraMassaFunc",
+      "salvarItemMassa",
+      "duplicarRegistros",
+
+      "dropdownItens",
+    ]),
+    validarHora(hora) {
+      const regex = /^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$/;
+
+      return regex.test(hora);
+    },
+    async listarRegistros() {
+      this.selecionados = [];
+      this.loading = true;
+
+      await this.listar({
+        id: this.filtro.id || undefined,
+        codigoFuncionario: this.filtro.codigoFuncionario || undefined,
+        data: this.filtro.data || undefined,
+        esteira: this.filtro.esteira || undefined,
+        item: this.filtro.item || undefined,
+      });
+
+      this.loading = false;
+    },
+    limparFiltros() {
+      this.filtro = {
+        id: null,
+        codigoFuncionario: null,
+        esteira: null,
+        item: null,
+      };
+    },
+
+    async codigoFuncionarioPesquisar() {
+      this.loading = true;
+      const res = await this.obterFuncionario({
+        codigoFuncionario: this.formulario.codigoFuncionario || undefined,
+        data: this.formulario.data || undefined,
+      });
+
+      if (res && !res.erro && res.nome) {
+        this.formulario.nome = res.nome;
+      }
+      this.loading = false;
+    },
+
+    async carregarOutroFuncionario() {
+      this.loading = true;
+      const res = await this.proximoFuncionarioCarregar({
+        codigoFuncionario: this.codigoFuncionarioTroca || undefined,
+        data: this.formulario.data || undefined,
+        esteira: this.formulario.esteira || undefined,
+      });
+      if (res && !res.erro && res.id) {
+        this.codigoFuncionarioTroca = null;
+        this.exibirRegistro(res.id);
+      }
+      this.loading = false;
+    },
+
+    async exibirRegistro(id) {
+      this.loading = true;
+
+      const res = await this.exibir(id);
+      if (res && !res.erro) {
+        this.formulario = {
+          id: res.id || null,
+          codigoFuncionario: res.codigoFuncionario || null,
+          data: res.data || null,
+          esteira: res.esteira || null,
+          nome: res.nome || null,
+          horasTrabalhadas: res.horasTrabalhadas || null,
+          status: res.status || null,
+          conferidoPor: res.conferidoPor || null,
+          conferidoEm: res.conferidoEm
+            ? this.$day(res.conferidoEm).format("DD/MM/YYYY HH:mm:ss")
+            : null,
+          alteradoPor: res.alteradoPor || null,
+          alteradoEm: res.alteradoEm
+            ? this.$day(res.alteradoEm).format("DD/MM/YYYY HH:mm:ss")
+            : null,
+        };
+
+        this.listarRelacionamento();
+      }
+
+      this.modal = true;
+      this.controle.exibir = true;
+      this.loading = false;
+    },
+    async dadosLinha(id) {
+      this.loading = true;
+
+      const res = await this.exibir(id);
+      const res2 = await this.listarItem(id);
+
+      if (res && res2 && !res.erro && !res2.erro) {
+        this.resumoLinha = res.loginColaborador;
+        this.horasResumoLinha = res.horasTrabalhadas;
+        this.itensResumo = res2 || [];
+        this.modalResumoProdutividade = true;
+      }
+      this.loading = false;
+    },
+    async excluirRegistro() {
+      this.loading = true;
+
+      const res = await this.excluir(this.formulario.id);
+
+      if (res && !res.erro) this.resetFormulario();
+
+      this.loading = false;
+    },
+    async finalizarDiaFunc() {
+      this.loading = true;
+
+      const res = await this.finalizarDiaFuncionario(this.formulario.id);
+
+      if (res && !res.erro) this.exibirRegistro(this.formulario.id);
+
+      this.loading = false;
+    },
+    async finalizarDiaFuncMassa() {
+      this.loading = true;
+
+      const res = await this.finalizarDiaFuncionarioMassa({
+        registros: this.selecionados.map((el) => el.id),
+      });
+
+      if (res && !res.erro) this.listarRegistros();
+
+      this.loading = false;
+    },
+    async salvarHorasMassa() {
+      this.loading = true;
+
+      const res = await this.salvarHoraMassaFunc({
+        registros: this.selecionados.map((el) => el.id),
+        horasTrabalhadas: moeda.strip(this.horasTrabalhadasMassa) || undefined,
+      });
+
+      if (res && !res.erro) {
+        this.listarRegistros();
+        this.modalHoraTrabalhada = false;
+      }
+
+      this.loading = false;
+    },
+    async voltarPendenteFunc() {
+      this.loading = true;
+
+      const res = await this.voltarDiaFuncionario(this.formulario.id);
+
+      if (res && !res.erro) this.exibirRegistro(this.formulario.id);
+
+      this.loading = false;
+    },
+    async resumoProgramacao(registro) {
+      const res = await this.exibir(registro.id);
+      if (res && !res.erro) {
+        this.formulario = {
+          id: res.id || null,
+          codigoFuncionario: res.codigoFuncionario || null,
+          data: res.data || null,
+          nome: res.nome || null,
+          loginColaborador: res.loginColaborador || null,
+          conferidoPor: res.conferidoPor || null,
+          conferidoEm: res.conferidoEm
+            ? this.$day(res.conferidoEm).format("DD/MM/YYYY HH:mm:ss")
+            : null,
+          alteradoPor: res.alteradoPor || null,
+          alteradoEm: res.alteradoEm
+            ? this.$day(res.alteradoEm).format("DD/MM/YYYY HH:mm:ss")
+            : null,
+        };
+      }
+
+      const res2 = await this.listarItem(registro.id);
+
+      if (res2 && !res2.erro) {
+        this.itensResumo = res2;
+        this.tituloModalResumo = `${registro.loginColaborador} - ${registro.data}`;
+        this.modalResumoProdutividade = res2;
+      }
+    },
+    resetFormulario() {
+      this.controle = {
+        inserir: false,
+        exibir: false,
+        editar: false,
+      };
+      this.formulario = {
+        id: null,
+        codigoFuncionario: null,
+        data: null,
+        nome: null,
+        status: null,
+        loginColaborador: null,
+        conferidoPor: null,
+        horasTrabalhadas: null,
+        conferidoEm: null,
+        alteradoPor: null,
+        alteradoEm: null,
+      };
+
+      this.modal = false;
+      this.codigoFuncionarioTroca = null;
+      this.listarRegistros();
+    },
+    async salvarRegistro() {
+      if (await this.$refs.observer.validate()) {
+        this.loading = true;
+
+        const form = {
+          id: this.formulario.id || undefined,
+          horasTrabalhadas: this.formulario.horasTrabalhadas
+            ? moeda.strip(this.formulario.horasTrabalhadas)
+            : null,
+          codigoFuncionario: this.formulario.codigoFuncionario || undefined,
+          data: this.formulario.data || undefined,
+          esteira: this.formulario.esteira || undefined,
+          // conferidoPor: null,
+          conferidoEm: this.formulario.conferidoEm
+            ? this.$day(
+                this.formulario.conferidoEm,
+                "DD/MM/YYYY HH:mm:ss"
+              ).format("YYYY-MM-DD HH:mm:ss")
+            : undefined,
+          // alteradoPor: null,
+          alteradoEm: this.formulario.alteradoEm
+            ? this.$day(
+                this.formulario.alteradoEm,
+                "DD/MM/YYYY HH:mm:ss"
+              ).format("YYYY-MM-DD HH:mm:ss")
+            : undefined,
+        };
+        let res;
+
+        if (form.id) res = await this.editar(form);
+        else if (!form.id) res = await this.salvar(form);
+
+        if (res) {
+          if (!res.erro) {
+            if (form.id) {
+              this.exibirRegistro(form.id);
+            } else {
+              this.resetFormulario();
+            }
+            if (res.id) this.exibirRegistro(res.id);
+          } else if (typeof res.erro === "object") {
+            this.$refs.observer.setErrors(res.erro);
+            this.$setError({}, res.erro);
+          }
+        }
+
+        this.loading = false;
+      }
+    },
+
+    // Relacionamaento
+    async inserirRelacionamento() {
+      if (await this.$refs.observerRelacionamento.validate()) {
+        this.loading = true;
+
+        const form = {
+          desossaProdutividadeFuncionarioId: this.formulario.id || undefined,
+
+          id: this.formularioRelacionamento.id || undefined,
+          produtoDesossaItemId:
+            this.formularioRelacionamento.produtoDesossaItemId || undefined,
+          quantidade:
+            moeda.strip(this.formularioRelacionamento.quantidade) || undefined,
+          esteira:
+            moeda.strip(this.formularioRelacionamento.esteira) || undefined,
+          // conferidoPor: null,
+          conferidoEm: this.formularioRelacionamento.conferidoEm
+            ? this.$day(
+                this.formularioRelacionamento.conferidoEm,
+                "DD/MM/YYYY HH:mm:ss"
+              ).format("YYYY-MM-DD HH:mm:ss")
+            : undefined,
+          // alteradoPor: null,
+          alteradoEm: this.formularioRelacionamento.alteradoEm
+            ? this.$day(
+                this.formularioRelacionamento.alteradoEm,
+                "DD/MM/YYYY HH:mm:ss"
+              ).format("YYYY-MM-DD HH:mm:ss")
+            : undefined,
+          horas: moeda.strip(this.formularioRelacionamento.horas),
+        };
+        let res;
+
+        if (form.id) res = await this.editarItem(form);
+        else if (!form.id) res = await this.salvarItem(form);
+
+        if (res) {
+          if (!res.erro) {
+            this.resetRelacionamento();
+            this.listarRelacionamento();
+          } else if (typeof res.erro === "object") {
+            this.$refs.observerRelacionamento.setErrors(res.erro);
+            this.$setError({}, res.erro);
+          }
+        }
+
+        this.loading = false;
+      }
+    },
+    async duplicarRegistrosDia() {
+      this.loading = true;
+
+      const res = await this.duplicarRegistros({
+        registros: this.selecionados,
+        data: this.dataDuplicidade,
+      });
+
+      if (res && !res.erro) {
+        this.listarRegistros();
+        this.modalDuplicarItens = false;
+      }
+
+      this.loading = false;
+    },
+    async inserirRelacionamentoMassa() {
+      if (await this.$refs.observerRelacionamentoMassa.validate()) {
+        this.loading = true;
+
+        const form = {
+          registros: this.selecionados.map((el) => el.id),
+          produtoDesossaItemId:
+            this.formularioRelacionamentoMassa.produtoDesossaItemId ||
+            undefined,
+          quantidade:
+            moeda.strip(this.formularioRelacionamentoMassa.quantidade) ||
+            undefined,
+          esteira:
+            moeda.strip(this.formularioRelacionamentoMassa.esteira) ||
+            undefined,
+          horas: moeda.strip(this.formularioRelacionamentoMassa.horas),
+        };
+        const res = await this.salvarItemMassa(form);
+
+        if (res && !res.erro) {
+          this.modalRelacionamentoMassa = null;
+          (this.formularioRelacionamentoMassa = {
+            produtoDesossaItemId: null,
+            quantidade: null,
+            esteira: null,
+            horas: null,
+          }),
+            this.listarRegistros();
+        }
+        this.loading = false;
+      }
+    },
+    abrirModalIndividual() {
+      this.formularioRelacionamentoIndividual.esteira =
+        this.selecionados[0].esteira;
+      this.modalRelacionamentoIndividual = true;
+      this.modalRelacionamentos = false;
+      this.selecionados[0];
+
+      if (this.selecionarLinha) {
+        this.inserirIndividualmente();
+      }
+    },
+    async inserirIndividualmente() {
+      if (this.selecionados.length) {
+        if (await this.$refs.observerRelacionamentoIndividual.validate()) {
+          this.loading = true;
+
+          let index = this.selecionarLinha;
+          const form = {
+            desossaProdutividadeFuncionarioId:
+              this.selecionados[index].id || undefined,
+
+            id: this.formularioRelacionamentoIndividual.id || undefined,
+            produtoDesossaItemId:
+              this.formularioRelacionamentoIndividual.produtoDesossaItemId ||
+              undefined,
+            quantidade:
+              moeda.strip(this.formularioRelacionamentoIndividual.quantidade) ||
+              undefined,
+            esteira:
+              moeda.strip(this.formularioRelacionamentoIndividual.esteira) ||
+              undefined,
+            // conferidoPor: null,
+            conferidoEm: this.formularioRelacionamentoIndividual.conferidoEm
+              ? this.$day(
+                  this.formularioRelacionamentoIndividual.conferidoEm,
+                  "DD/MM/YYYY HH:mm:ss"
+                ).format("YYYY-MM-DD HH:mm:ss")
+              : undefined,
+            // alteradoPor: null,
+            alteradoEm: this.formularioRelacionamentoIndividual.alteradoEm
+              ? this.$day(
+                  this.formularioRelacionamentoIndividual.alteradoEm,
+                  "DD/MM/YYYY HH:mm:ss"
+                ).format("YYYY-MM-DD HH:mm:ss")
+              : undefined,
+            horas: moeda.strip(this.formularioRelacionamentoIndividual.horas),
+          };
+          let res;
+
+          if (!form.id) res = await this.salvarItem(form);
+
+          if (res) {
+            if (!res.erro) {
+              this.$refs.form.reset();
+              this.formularioRelacionamentoIndividual.esteira =
+                this.selecionados[index].esteira;
+              let indexSelecionado = this.selecionados.indexOf(index);
+              if (indexSelecionado > -1) {
+                this.selecionados.splice(index, 1);
+              }
+            } else if (typeof res.erro === "object") {
+              this.$refs.observerRelacionamento.setErrors(res.erro);
+              this.$setError({}, res.erro);
+            }
+            if (this.selecionados.length === 0) {
+              this.resetModalIndividual();
+              this.listarRegistros();
+            }
+          }
+          index++;
+        }
+        this.loading = false;
+      }
+    },
+    async inserirRelacionamentoIndividual() {
+      if (this.selecionados.length) {
+        if (await this.$refs.observerRelacionamentoIndividual.validate()) {
+          this.loading = true;
+
+          let index = 0;
+          const form = {
+            desossaProdutividadeFuncionarioId:
+              this.selecionados[index].id || undefined,
+
+            id: this.formularioRelacionamentoIndividual.id || undefined,
+            produtoDesossaItemId:
+              this.formularioRelacionamentoIndividual.produtoDesossaItemId ||
+              undefined,
+            quantidade:
+              moeda.strip(this.formularioRelacionamentoIndividual.quantidade) ||
+              undefined,
+            esteira:
+              moeda.strip(this.formularioRelacionamentoIndividual.esteira) ||
+              undefined,
+            // conferidoPor: null,
+            conferidoEm: this.formularioRelacionamentoIndividual.conferidoEm
+              ? this.$day(
+                  this.formularioRelacionamentoIndividual.conferidoEm,
+                  "DD/MM/YYYY HH:mm:ss"
+                ).format("YYYY-MM-DD HH:mm:ss")
+              : undefined,
+            // alteradoPor: null,
+            alteradoEm: this.formularioRelacionamentoIndividual.alteradoEm
+              ? this.$day(
+                  this.formularioRelacionamentoIndividual.alteradoEm,
+                  "DD/MM/YYYY HH:mm:ss"
+                ).format("YYYY-MM-DD HH:mm:ss")
+              : undefined,
+            horas: moeda.strip(this.formularioRelacionamentoIndividual.horas),
+          };
+          let res;
+
+          if (!form.id) res = await this.salvarItem(form);
+
+          if (res) {
+            if (!res.erro) {
+              this.$refs.form.reset();
+              this.formularioRelacionamentoIndividual.esteira =
+                this.selecionados[index].esteira;
+              this.selecionados.shift();
+            } else if (typeof res.erro === "object") {
+              this.$refs.observerRelacionamento.setErrors(res.erro);
+              this.$setError({}, res.erro);
+            }
+            if (this.selecionados.length === 0) {
+              this.resetModalIndividual();
+              this.listarRegistros();
+            }
+          }
+          index++;
+        }
+        this.loading = false;
+      }
+    },
+    resetModalIndividual() {
+      this.modalRelacionamentoIndividual = false;
+      this.$refs.form.reset();
+    },
+    async excluirRelacionamento() {
+      const res = await this.excluirItem(this.formularioRelacionamento.id);
+      if (res && !res.erro) {
+        this.resetRelacionamento();
+        this.listarRelacionamento();
+      }
+    },
+    async exibirRelacionamento(id) {
+      const res = await this.exibirItem(id);
+      if (res && !res.erro) {
+        this.formularioRelacionamento = {
+          id: res.id || null,
+          produtoDesossaItemId: res.produtoDesossaItemId || null,
+          quantidade: res.quantidade || null,
+          esteira: res.esteira || null,
+          horas: res.horas || null,
+          conferidoPor: res.conferidoPor || null,
+          conferidoEm: res.conferidoEm
+            ? this.$day(res.conferidoEm).format("DD/MM/YYYY HH:mm:ss")
+            : null,
+          alteradoPor: res.alteradoPor || null,
+          alteradoEm: res.alteradoEm
+            ? this.$day(res.alteradoEm).format("DD/MM/YYYY HH:mm:ss")
+            : null,
+        };
+        this.modalRelacionamento = true;
+        this.controleModal.exibir = true;
+      }
+    },
+    async listarRelacionamento() {
+      await this.listarItem(this.formulario.id);
+    },
+    abrirModalDuplicar() {
+      this.dataDuplicidade = this.$day().format("YYYY-MM-DD");
+      this.modalDuplicarItens = true;
+    },
+    async confirmarCiente() {
+      if (await this.$refs.observer2.validate()) {
+        let opcoes;
+        opcoes = {
+          login: this.formularioLogin.login || undefined,
+          senha: this.formularioLogin.senha
+            ? this.$crypto(this.formularioLogin.senha, "sha1")
+            : undefined,
+          empresa: 2,
+          tipo: 1,
+          id: this.formulario.id,
+        };
+
+        const res = await this.salvarCiente(opcoes);
+
+        if (res && !res.erro) {
+          (this.modalAltorizacao = false),
+            (this.formularioLogin.login = null),
+            (this.formularioLogin.senha = null),
+            this.fecharResumoProdutividade();
+          this.resetFormulario();
+        }
+      }
+    },
+    abrirAutenticacao() {
+      this.formularioLogin.login = this.formulario.loginColaborador;
+      this.modalAltorizacao = true;
+      setTimeout(() => {
+        this.$refs.senha.focus();
+      }, 100);
+    },
+    fecharResumoProdutividade() {
+      this.itensResumo = [];
+      this.tituloModalResumo = null;
+      this.modalResumoProdutividade = false;
+      this.resetFormulario();
+    },
+    abrirModalCalculo() {
+      this.formularioCalculo.inicio = day().format("YYYY-MM-DD");
+      this.formularioCalculo.fim = day().format("YYYY-MM-DD");
+
+      this.modalCalculo = true;
+    },
+    // confirmarHoraCalculo() {
+    //   if (this.formularioCalculo.inicio && this.formularioCalculo.fim) {
+    //     const inicio = day(this.formularioCalculo.inicio);
+    //     const fim = day(this.formularioCalculo.fim);
+
+    //     const diferencaEmMinutos = fim.diff(inicio, "minute");
+
+    //     const horas = Math.floor(diferencaEmMinutos / 60);
+    //     const minutos = diferencaEmMinutos % 60;
+
+    //     const resultado = `${horas}.${minutos < 10 ? "0" : ""}${minutos}`;
+
+    //     this.formularioCalculo.hora = moeda.format(Number(resultado), 2);
+    //   }
+    // },
+    abrirInserirProduto() {
+      this.formularioRelacionamento.esteira = this.formulario.esteira;
+      this.modalRelacionamento = true;
+      this.controleModal.inserir = true;
+    },
+    confirmarHoraCalculo() {
+      if (this.formularioCalculo.horaInicio) {
+        if (!this.validarHora(this.formularioCalculo.horaInicio)) {
+          this.formularioCalculo.horaInicio = "";
+          this.$notificacao("Entrada Inválida", "erro");
+          return;
+        }
+      }
+
+      if (this.formularioCalculo.horaFim) {
+        if (!this.validarHora(this.formularioCalculo.horaFim)) {
+          this.$notificacao("Saída Inválida", "erro");
+          this.formularioCalculo.horaFim = "";
+          return;
+        }
+      }
+
+      if (this.formularioCalculo.horaInicio && this.formularioCalculo.horaFim) {
+        const inicio = day(
+          this.formularioCalculo.inicio + this.formularioCalculo.horaInicio
+        );
+        const fim = day(
+          this.formularioCalculo.fim + this.formularioCalculo.horaFim
+        );
+
+        const diferencaEmMinutos = fim.diff(inicio, "minute");
+
+        const horas = Math.floor(diferencaEmMinutos / 60);
+        const minutos = diferencaEmMinutos % 60;
+
+        const resultado = `${horas}.${minutos < 10 ? "0" : ""}${minutos}`;
+
+        this.formularioCalculo.hora = moeda.format(Number(resultado), 2);
+      }
+    },
+    inserirHoraCalculo() {
+      if (this.horaLiquida) {
+        if (this.formularioCalculo.descontos) {
+          this.formulario.horasTrabalhadas = moeda.format(
+            moeda.strip(this.formularioCalculo.hora) -
+              moeda.strip(this.formularioCalculo.descontos),
+            2
+          );
+        } else {
+          this.formulario.horasTrabalhadas = moeda.format(
+            moeda.strip(this.formularioCalculo.hora),
+            2
+          );
+        }
+        this.modalCalculo = false;
+        this.formularioCalculo.inicio = null;
+        this.formularioCalculo.fim = null;
+        this.formularioCalculo.hora = null;
+      } else {
+        this.$notificacao("Erro ao obter as Horas Liquidas", "erro");
+      }
+    },
+    adicionarFuncionario() {
+      this.modal = true;
+      this.controle.inserir = true;
+      this.formulario.data = this.$day().format("YYYY-MM-DD");
+
+      setTimeout(() => {
+        this.$refs.esteira.focus();
+      }, 100);
+    },
+    async resetRelacionamento() {
+      if (this.$refs.observerRelacionamento)
+        this.$refs.observerRelacionamento.reset();
+
+      this.modalRelacionamento = false;
+      this.formularioRelacionamento = {
+        id: null,
+        produtoDesossaItemId: null,
+        quantidade: null,
+        esteira: null,
+        conferidoPor: null,
+        conferidoEm: null,
+        alteradoPor: null,
+        alteradoEm: null,
+        horas: null,
+      };
+      this.controleModal = {
+        inserir: false,
+        exibir: false,
+        editar: false,
+      };
+    },
+  },
+};
+</script>
+
+<style lang="scss">
+.linhaSelecionada {
+  background-color: rgba(0, 128, 0, 0.356);
+}
+.linhaDesativada {
+  color: grey;
+}
+</style>

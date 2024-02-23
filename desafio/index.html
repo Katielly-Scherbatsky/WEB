@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="PT-br">
+
+<head>
+  <meta charset="UTF-8">
+  <link rel="icon" type="image/png" sizes="32x32" href="./assets/images/favicon-32x32.png">
+  <link href="https://fonts.googleapis.com/css2?family=Young+Serif&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&family=Young+Serif&display=swap" rel="stylesheet">
+
+  <title>Frontend Mentor | Recipe page</title>
+
+  <style>
+    html {
+      padding: 0;
+      margin: 0;
+    }
+    .attribution {
+      font-size: 11px;
+      text-align: center;
+    }
+    .attribution a {
+      color: hsl(228, 45%, 44%);
+    }
+    .white {
+      background-color: white;
+      padding: 40px 40px;
+      border-radius: 20px;
+    }
+    img {
+      max-width: 100%;
+      display: block;
+    }
+    h1 {
+      font-family: "Young Serif", sans-serif;
+      font-weight: 400;
+      font-size: 32px;
+      color: hsl(24, 5%, 18%);
+    }
+    h3 {
+      font-family: "Outfit", sans-serif;
+      font-weight: 600;
+      color: hsl(332, 51%, 32%);
+      margin: 10px;
+    }
+    p {
+      font-family: "Outfit", sans-serif;
+      font-weight: 400;
+      font-size: 16px;
+      color: hsl(30, 10%, 34%);
+    }
+    img {
+      border-radius: 10px;
+    }
+    body {
+    background-color: hsl(30, 54%, 90%);
+    padding: 100px 300px;
+    }
+    .fundo-rosa {
+      background-color: hsl(330, 100%, 98%);
+      padding: 10px;
+      margin: 40px 0 0;
+      border-radius: 10px;
+      border: 1px solid  hsl(30, 54%, 90%);
+    }
+    .rosa li::marker {
+      color: hsl(332, 51%, 32%);
+    }
+    .vermelho li::marker {
+      color:  hsl(14, 45%, 36%);
+    }
+    li {
+      font-family: "Outfit", sans-serif;
+      padding: 5px 10px 10px 0;
+      color: hsl(30, 10%, 34%);
+    }
+    .title-red {
+      font-family: "Young Serif", sans-serif;
+      font-weight: 400;
+      font-size: 30px;
+      color: hsl(14, 45%, 36%);
+    }
+    table {
+      width: 100%;
+    }
+    th {
+      text-align: left;
+      padding: 10px;
+      border-bottom: 1px;
+    }
+    th, td {
+      border-bottom: 1px solid #ddd;
+    }
+    .cinza {
+      color: hsl(30, 10%, 34%);
+    }
+    .vermelho {
+      color:  hsl(14, 45%, 36%);
+    }
+    footer {
+      padding: 30px 20px 0px 0px;
+      font-family: "Outfit", sans-serif;
+      color: hsl(24, 5%, 18%);
+    }
+
+    @media (max-width: 1000px) and (min-width: 801px) {
+      body {
+        padding: 50px 200px;
+      }
+
+      .white {
+        padding: 40px;
+      }
+
+      img {
+        border-radius: 8px;
+      }
+
+      div {
+        margin: 0 25px;
+      }
+
+      .fundo-rosa {
+        margin: 25px;
+        border-radius: 10px;
+      }
+
+      hr {
+        margin: 25px;
+      }
+
+      .vermelho {
+        margin: 25px;
+        border-radius: 8px;
+      }
+    }
+
+    @media (max-width: 800px) {
+      body {
+        padding: 30px 10px;
+      }
+
+      .white {
+        padding: 30px;
+      }
+
+      img {
+        border-radius: 5px;
+      }
+
+      div {
+        margin: 0 20px;
+      }
+
+      .fundo-rosa {
+        margin: 20px;
+        border-radius: 8px;
+      }
+
+      hr {
+        margin: 20px;
+      }
+
+      .vermelho {
+        margin: 20px;
+        border-radius: 5px;
+      }
+    }
+
+    @media (max-width: 600px) {
+      body {
+        padding: 0px;
+        margin: 0px;
+      }
+        .white {
+        background-color: none;
+        padding: 0px;
+        border-radius: 0px;
+      }
+      img {
+        border-radius: 0px;
+      }
+      div {
+        margin: 0px 25px;
+      }
+      .fundo-rosa {
+        margin: 25px;
+        border-radius: 15px;
+      }
+      hr {
+        margin: 25px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <section class="white">
+      <section>
+        <img src="./assets/images/image-omelette.jpeg" width="100%" alt="">
+        
+      <div>
+        <h1>Receita Simples de Omelete</h1>
+    
+        <p>Um prato fácil e rápido, perfeito para qualquer refeição. Esta omelete clássica combina ovos batidos cozidos com perfeição, opcionalmente recheado com queijo, vegetais ou carnes de sua escolha.</p>
+      </div>
+    </section>
+    <section>
+      <div class="fundo-rosa">
+        <h3>Tempo de preparação</h3>
+  
+        <ul class="rosa">
+          <li><strong>Total:</strong> Aproximadamente 10 minutos</li>
+          <li><strong>Preparação:</strong> 5 minutos</li>
+          <li><strong>Cozinhando:</strong> 5 minutos</li>
+        </ul>
+      </div>
+    </section>
+    <section>
+      <div>
+        <h1 class="title-red">Ingredientes</h1>
+    
+        <ul class="vermelho">
+          <li>2-3 ovos grandes</li>
+          <li>Sal, a gosto</li>
+          <li>Pimenta a gosto</li>
+          <li>1 colher de sopa de manteiga ou óleo</li>
+          <li>Recheios opcionais: queijo, legumes em cubos, carnes cozidas, ervas</li>
+        </ul>
+      </div>
+    </section>
+      <hr class="cinza">
+    <section>
+      <div>
+        <h1 class="title-red">Instruções</h1>
+        <ol class="vermelho">
+          <li><strong>Bata os ovos:</strong> Numa tigela, bata os ovos com uma pitada de sal e pimenta até ficarem bem misturados Você pode adicionar uma colher de sopa de água ou leite para obter uma textura mais fofa.</li>
+          <li><strong>Aqueça a panela:</strong> Coloque uma frigideira antiaderente em fogo médio e adicione manteiga ou óleo.</li>
+          <li><strong>Cozinhe a omelete:</strong> Assim que a manteiga derreter e borbulhar, coloque os ovos. Incline a panela para garantir os ovos cobrem uniformemente a superfície.</li>
+          <li><strong>Adicione recheios (opcional):</strong> Quando os ovos começarem a endurecer nas bordas, mas ainda estiverem um pouco escorrendo no meio, polvilhe osrecheios  escolhidos sobre metade da omelete.
+        </li>
+          <li><strong>Dobre e sirva:</strong> Enquanto a omelete continua cozinhando, levante cuidadosamente uma das pontas e dobre-a sobre o recheios. Deixe cozinhar por mais um minuto e depois coloque-o em um prato.</li>
+          <li><strong>Aproveite:</strong> Sirva quente, com mais sal e pimenta se necessário.</li>
+        </ol>
+      <div>
+    </section>
+    <hr class="cinza">
+    <section>
+      <div>
+        <h1 class="title-red">Nutrição</h1>
+        <p>A tabela abaixo mostra os valores nutricionais por porção sem recheios adicionais.</p>
+        <table>
+          <tr>
+            <th class="cinza">Calorias</th>
+            <th class="vermelho">277kcal</th>
+          </tr>
+          <tr>
+            <th class="cinza">Carboidratos</th>
+            <th class="vermelho">0g</th>
+          </tr>
+          <tr>
+            <th class="cinza">Proteína</th>
+            <th class="vermelho">20g</th>
+          </tr>
+          <tr>
+            <th class="cinza">Gordura</th>
+            <th class="vermelho">22g</th>
+          </tr>
+        </table>
+      </div>
+    </section>
+    <footer>
+      <div class="attribution">
+        Desafio por <a href="https://www.frontendmentor.io?ref=challenge" target="_blank">Frontend Mentor</a>.
+        codificado por <a href="#">Katielly Bordin Santos</a>.
+      </div>
+    </footer>
+  </section>
+</body>
+
+</html>
