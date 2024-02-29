@@ -1,0 +1,215 @@
+.attribution {
+  font-size: 11px;
+  text-align: center;
+}
+
+.attribution a {
+  color: hsl(228, 45%, 44%);
+}
+
+html {
+  background-color: hsl(225, 100%, 94%);
+  background-image: url('./images/pattern-background-desktop.svg');
+  background-repeat: no-repeat;
+}
+
+body {
+  padding: 80px;
+}
+
+.container {
+  margin: auto;
+  width: 40%;
+  height: auto;
+  background-color: white;
+  border-radius: 15px;
+  font-family: "Red Hat Display", sans-serif;
+  font-weight: 400;
+  text-align: center;
+  box-shadow: hsl(224, 23%, 55%);
+}
+
+img {
+  border-radius: 15px 15px 0px 0px;
+  align-self: center;
+}
+
+section {
+  padding: 0px 60px;
+}
+
+h1 {
+  color: hsl(223, 47%, 23%);
+  padding: 10px;
+  font-weight: 900;
+}
+
+p {
+  font-size: 16px;
+  font-weight: 400;
+  color: hsl(224, 23%, 55%);
+  margin: 4px 0;
+}
+
+.fundo-azul {
+  background-color: hsl(225, 100%, 98%);
+  padding: 10px 20px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  margin: 20px 0;
+}
+
+.texto-azul p {
+  padding-bottom: 0;
+}
+
+.texto-azul {
+  color: hsl(223, 47%, 23%);
+  padding-right: 40px;
+  margin: 10px 0 0;
+}
+
+a {
+  text-decoration: none;
+}
+
+a:hover {
+  color: hsl(224, 23%, 55%);
+  text-decoration: none;
+}
+
+button {
+  all:revert;
+  background-color: hsl(245, 75%, 52%);
+  padding: 15px 32px;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+  font-size: 16px;
+  color: white;
+  border-radius: 15px;
+  border: 0;
+  width: 100%;
+}
+
+button:hover {
+  background-color: hsl(224, 23%, 55%);
+  cursor: pointer;
+}
+
+.info {
+  text-align: left;
+  padding-left: 20px;
+}
+
+.cancelar {
+  all:revert;
+  padding: 40px 0;
+}
+
+.cancelar a {
+  text-decoration: none;
+  color: hsl(224, 23%, 55%);
+  font-weight: 700;
+}
+
+.cancelar a:hover {
+  text-decoration: none;
+  color: hsl(223, 47%, 23%);
+  font-weight: 700;
+}
+
+footer {
+  margin-top: 40px;
+  font-family: "Red Hat Display", sans-serif;
+}
+
+@media (max-width: 1000px) and (min-width: 801px) {
+  body {
+    padding: 50px;
+  }
+
+  .container {
+    width: 50%;
+    padding: 40px;
+  }
+
+  section {
+    padding: 0px 40px;
+  }
+
+  .fundo-azul {
+    padding: 10px 15px;
+  }
+
+  .texto-azul {
+    padding-right: 20px;
+  }
+
+  button {
+    padding: 15px 20px;
+  }
+}
+
+@media (max-width: 800px) and (min-width: 601px) {
+  body {
+    padding: 30px;
+  }
+
+  .container {
+    width: 60%;
+    padding: 30px;
+  }
+
+  section {
+    padding: 0px 30px;
+  }
+
+  .fundo-azul {
+    padding: 10px 10px;
+  }
+
+  .texto-azul {
+    padding-right: 10px;
+  }
+
+  button {
+    padding: 15px 16px;
+  }
+
+  a {
+    padding-left: 40px;
+  }
+}
+
+@media (max-width: 600px) {
+  body {
+    padding: 20px;
+  }
+
+  .container {
+    width: 80%;
+    padding: 20px;
+  }
+
+  section {
+    padding: 0px 20px;
+  }
+
+  .fundo-azul {
+    padding: 10px 5px;
+  }
+
+  .texto-azul {
+    padding-right: 5px;
+  }
+
+  button {
+    padding: 15px 10px;
+  }
+  
+  a {
+    padding-left: 40px;
+  }
+}
