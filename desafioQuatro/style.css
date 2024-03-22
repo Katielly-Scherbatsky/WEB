@@ -1,0 +1,144 @@
+.attribution {
+  font-size: 11px;
+  text-align: center;
+}
+.attribution a {
+  color: hsl(228, 45%, 44%);
+}
+html {
+  padding: 0;
+  margin: 0;
+  font-family: "Poppins", sans-serif;
+}
+.cabecalho {
+  display: flex;
+  justify-content: space-between;
+  padding: 30px 60px;
+}
+.logo {
+  height: 30px;
+  width: auto;
+}
+.botaoHeader {
+  background-color: white;
+  border-radius: 60px;
+  padding: 15px 60px;
+  border: 0;
+  box-shadow: 2px 2px 4px 4px rgba(128, 128, 128, 0.1);
+  font-weight: 700;
+  color: hsl(192, 100%, 9%);
+}
+.containerUm {
+  background-color: hsl(193, 100%, 96%);
+  background-image: url("./images/bg-hero-desktop.svg");
+  background-repeat: no-repeat;
+  padding: 0;
+  margin: 0;
+}
+.secaoUm {
+  padding: 40px;
+  display: flex;
+  justify-content: space-between;
+  padding-bottom: 60px;
+  margin-bottom: 150px;
+}
+.tamanhoImagens {
+  width: 650px;
+  height: auto;
+  padding-right: 60px;
+}
+h1 {
+  font-size: 40px;
+  color: hsl(192, 100%, 9%);
+  padding: 40px 0 0 60px;
+  font-weight: 600;
+}
+.text {
+  padding-left: 60px;
+  font-size: 16px;
+  color: hsl(192, 100%, 9%);
+  font-weight: 400;
+}
+.botaoRosa {
+  padding: 20px 80px;
+  border-radius: 100px;
+  background-color: hsl(322, 100%, 66%);
+  color: white;
+  border: 1px hsl(330, 100%, 66%);
+  margin-left: 60px;
+  margin-top: 10px;
+  font-weight: bold;
+}
+.cards {
+  display: flex;
+  justify-content: space-between;
+  border: 1px black;
+  padding: 50px;
+  box-shadow: 2px 2px 4px 4px rgba(128, 128, 128, 0.1);
+  margin: 60px 100px 40px 100px;
+  border-radius: 10px;
+}
+.imgCard {
+  height: 300px;
+  width: auto;
+}
+.textCard {
+  align-content: center;
+  margin-left: 40px;
+}
+h3 {
+  font-size: 25px;
+  color: hsl(192, 100%, 9%);
+}
+.pCard {
+  color: hsl(208, 11%, 55%);
+}
+.textDiferente {
+  margin-left: 120px;
+}
+.containerDois {
+  background-color: hsl(192, 100%, 9%);
+  color: white;
+  display: flex;
+  justify-content: space-between;
+  padding: 200px 300px 0 100px;
+  align-items: center;
+}
+.column {
+  display: flex;
+  flex-direction: column;
+}
+.row {
+  display: flex;
+  flex-direction: row;
+  padding-bottom: 100px;
+}
+.container {
+  background-color: hsl(192, 100%, 9%);
+}
+.copy {
+  color: white;
+  text-align: end;
+  margin: 40px 60px 0;
+  padding-bottom: 60px;
+  font-size: 12px;
+  margin-right: 70px;
+}
+.logoBranca {
+  height: auto;
+  width: 200px;
+  padding-bottom: 40px;
+}
+.icon {
+  height: auto;
+  width: 10px;
+  padding-right: 10px;
+  margin-right: 10px;
+}
+.border {
+  height: 12px;
+  width: 12px;
+  border-radius: 50%;
+  border: 1px solid #ffffff;
+  padding: 5px;
+}
